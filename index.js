@@ -1,62 +1,81 @@
-import CalculatorLexer from "./generated/CalculatorLexer.js";
-import CalculatorParser from "./generated/CalculatorParser.js";
-import { CustomCalculatorListener } from "./CustomCalculatorListener.js";
-import { CustomCalculatorVisitor } from "./CustomCalculatorVisitor.js";
-import antlr4, { CharStreams, CommonTokenStream, ParseTreeWalker } from "antlr4";
-import readline from 'readline';
 import fs from 'fs';
+import antlr4 from 'antlr4';
 
-async function main() {
-    let input;
+import LenguajeTextoLexer from './generated/LenguajeTextoLexer.js';
+import LenguajeTextoParser from './generated/LenguajeTextoParser.js';
+import CustomLenguajeTextoVisitor from './CustomLenguajeTextoVisitor.js';
 
-    // Intento leer la entrada desde el archivo input - en forma sincrona.
-    try {
-        input = fs.readFileSync('input.txt', 'utf8');
-    } catch (err) {
-        // Si no es posible leer el archivo, solicitar la entrada del usuario por teclado
-        input = await leerCadena(); // Simula lectura síncrona
-        console.log(input);
+class CustomErrorListener extends antlr4.error.ErrorListener {
+    constructor(tipo) {
+        super();
+        this.tipo = tipo;
+        this.errors = [];
     }
 
-    // Proceso la entrada con el analizador e imprimo el arbol de analisis en formato texto
-    let inputStream = CharStreams.fromString(input);
-    let lexer = new CalculatorLexer(inputStream);
-    let tokenStream = new CommonTokenStream(lexer);
-    let parser = new CalculatorParser(tokenStream);
-    let tree = parser.prog();
-    
-    // Verifico si se produjeron errores
-    if (parser.syntaxErrorsCount > 0) {
-        console.error("\nSe encontraron errores de sintaxis en la entrada.");
-    } 
-    else {
-        console.log("\nEntrada válida.");
-        const cadena_tree = tree.toStringTree(parser.ruleNames);
-        console.log(`Árbol de derivación: ${cadena_tree}`);
-
-        // Utilizo un listener y un walker para recorrer el arbol e indicar cada vez que reconoce una sentencia (stat)
-        //const listener = new CustomCalculatorListener();
-        // ParseTreeWalker.DEFAULT.walk(listener, tree);
-
-        // Utilizo un visitor para visitar los nodos que me interesan de mi arbol
-        const visitor = new CustomCalculatorVisitor();
-        visitor.visit(tree);   
+    syntaxError(recognizer, offendingSymbol, line, column, msg) {
+        this.errors.push({ line, column, msg });
+        console.error(`Error ${this.tipo} en línea ${line}, columna ${column}: ${msg}`);
     }
 }
 
-function leerCadena() {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
+const input = fs.readFileSync('input.txt', 'utf8');
 
-    return new Promise(resolve => {
-        rl.question("Ingrese una cadena: ", (answer) => {
-            rl.close();
-            resolve(answer);
-        });
-    });
+const inputStream = new antlr4.InputStream(input);
+
+const lexer = new LenguajeTextoLexer(inputStream);
+const lexerErrors = new CustomErrorListener('léxico');
+
+lexer.removeErrorListeners();
+lexer.addErrorListener(lexerErrors);
+
+const tokenStream = new antlr4.CommonTokenStream(lexer);
+tokenStream.fill();
+
+console.log('\nTABLA DE LEXEMAS Y TOKENS');
+console.log('LEXEMA\t\tTOKEN');
+
+let hayErrorLexico = false;
+
+for (const token of tokenStream.tokens) {
+    if (token.type === antlr4.Token.EOF) continue;
+
+    const tokenName = LenguajeTextoLexer.symbolicNames[token.type] || token.type;
+
+    console.log(`${token.text}\t\t${tokenName}`);
+
+    if (token.type === LenguajeTextoLexer.ERROR_CHAR) {
+        hayErrorLexico = true;
+        console.error(
+            `Error léxico en línea ${token.line}, columna ${token.column}: carácter no reconocido '${token.text}'`
+        );
+    }
 }
 
-// Ejecuta la función principal
-main();
+tokenStream.seek(0);
+
+const parser = new LenguajeTextoParser(tokenStream);
+const parserErrors = new CustomErrorListener('sintáctico');
+
+parser.removeErrorListeners();
+parser.addErrorListener(parserErrors);
+
+const tree = parser.programa();
+
+if (lexerErrors.errors.length > 0 || parserErrors.errors.length > 0 || hayErrorLexico) {
+    console.log('\nLa entrada contiene errores. No se ejecuta la interpretación.');
+    process.exit(1);
+}
+
+console.log('\nEntrada válida.');
+
+console.log('\nÁRBOL DE ANÁLISIS SINTÁCTICO');
+console.log(tree.toStringTree(parser.ruleNames));
+
+const visitor = new CustomLenguajeTextoVisitor();
+const codigoJS = visitor.visit(tree);
+
+console.log('\nTRADUCCIÓN A JAVASCRIPT');
+console.log(codigoJS);
+
+console.log('\nRESULTADO DE LA INTERPRETACIÓN');
+new Function(codigoJS)();

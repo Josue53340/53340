@@ -1,0 +1,5 @@
+variable texto = "Sintaxis";
+variable invertido = invertir(texto);
+imprimir(invertido);
+variable largo = longitud(texto);
+imprimir(largo);
