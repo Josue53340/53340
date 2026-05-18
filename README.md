@@ -1,20 +1,16 @@
 # Analizador Tema 25914_11
-
 Proyecto realizado con ANTLR4 + JavaScript para la materia Sintaxis y Semántica de los Lenguajes.
 
 ## Descripción
-
-El analizador procesa un archivo input.txt escrito en el lenguaje asignado.
+El analizador procesa un archivo `input.txt` escrito en el lenguaje asignado.
 
 El programa realiza:
-
-1. Análisis léxico y sintáctico.
-2. Tabla de lexemas y tokens.
-3. Árbol de análisis sintáctico.
-4. Traducción a JavaScript e interpretación.
+- Análisis léxico y sintáctico.
+- Generación de tabla de lexemas y tokens.
+- Construcción de árbol de análisis sintáctico.
+- Traducción a JavaScript e interpretación.
 
 ## Requisitos
-
 - Node.js
 - Java
 - ANTLR4
@@ -22,7 +18,15 @@ El programa realiza:
 
 ## Instalación
 
-Ejecutar:
+### 1. Clonar el repositorio
+git clone https://github.com/Josue53340/53340.git
 
-```bash
+### 2. Instalar dependencias
+Dentro de la carpeta del proyecto:
+
 npm install
+
+## Uso
+Para ejecutar:
+
+npm start 
